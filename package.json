@@ -1,0 +1,30 @@
+{
+  "name": "mindlint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cognitive Weather System for Developers - Observability for your brain, not your code",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "cli": "node packages/cli/bin/mindctl.js",
+    "dev:cli": "node --watch packages/cli/bin/mindctl.js",
+    "dev:extension": "npm run dev --workspace=packages/extension",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "dev:dashboard": "npm run dev --workspace=packages/dashboard",
+    "build": "npm run build --workspaces",
+    "build:extension": "npm run build --workspace=packages/extension",
+    "build:backend": "npm run build --workspace=packages/backend",
+    "build:dashboard": "npm run build --workspace=packages/dashboard"
+  },
+  "keywords": [
+    "cognitive",
+    "observability",
+    "developer-tools",
+    "mental-health",
+    "productivity"
+  ],
+  "author": "MindLint",
+  "license": "MIT",
+  "main": "index.js"
+}

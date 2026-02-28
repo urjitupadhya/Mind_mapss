@@ -1,0 +1,44 @@
+{
+    "name": "mindctl",
+    "version": "1.0.0",
+    "description": "🧠 Your Terminal Wellness OS — AI-powered mental health toolkit for developers",
+    "type": "module",
+    "main": "src/index.js",
+    "bin": {
+        "mindctl": "./bin/mindctl.js"
+    },
+    "scripts": {
+        "start": "node bin/mindctl.js",
+        "dev": "node --watch bin/mindctl.js",
+        "test": "node --test"
+    },
+    "keywords": [
+        "mental-health",
+        "wellness",
+        "cli",
+        "developer-tools",
+        "cognitive",
+        "ai",
+        "therapy",
+        "mindfulness",
+        "burnout"
+    ],
+    "author": "MindCode Team",
+    "license": "MIT",
+    "dependencies": {
+        "chalk": "^5.3.0",
+        "commander": "^12.1.0",
+        "inquirer": "^9.2.12",
+        "ora": "^8.0.1",
+        "boxen": "^7.1.1",
+        "cli-table3": "^0.6.3",
+        "figlet": "^1.7.0",
+        "gradient-string": "^2.0.2",
+        "better-sqlite3": "^11.0.0",
+        "node-cron": "^3.0.3",
+        "conf": "^12.0.0",
+        "cli-progress": "^3.12.0",
+        "terminal-kit": "^3.0.1",
+        "play-sound": "^1.1.6"
+    }
+}

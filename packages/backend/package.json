@@ -1,0 +1,32 @@
+{
+  "name": "mindlint-backend",
+  "version": "1.0.0",
+  "description": "MindLint Backend API - Fastify server for telemetry and insights",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "build": "echo 'No build step for backend'",
+    "db:init": "node src/db/init.js"
+  },
+  "keywords": [
+    "mindlint",
+    "backend",
+    "fastify",
+    "api"
+  ],
+  "author": "MindLint",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cors": "^8.5.0",
+    "@fastify/websocket": "^9.0.0",
+    "better-sqlite3": "^9.4.3",
+    "fastify": "^4.26.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/uuid": "^9.0.8"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "name": "mindlint-extension",
+  "version": "1.0.0",
+  "description": "MindLint VS Code Extension - Cognitive telemetry collection",
+  "main": "dist/extension.js",
+  "scripts": {
+    "dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --platform=node --external:vscode --external:sqlite3 --format=cjs --sourcemap",
+    "build": "npm run dev",
+    "test": "echo 'No tests yet'"
+  },
+  "keywords": [
+    "mindlint",
+    "vscode-extension",
+    "telemetry",
+    "cognitive"
+  ],
+  "author": "MindLint",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/uuid": "^9.0.8",
+    "esbuild": "^0.20.1",
+    "typescript": "^5.3.3",
+    "vscode": "^1.1.37"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mindlint.showDashboard",
+        "title": "MindLint: Show Dashboard"
+      },
+      {
+        "command": "mindlint.enableTracking",
+        "title": "MindLint: Enable Tracking"
+      },
+      {
+        "command": "mindlint.disableTracking",
+        "title": "MindLint: Disable Tracking"
+      }
+    ],
+    "configuration": {
+      "title": "MindLint",
+      "properties": {
+        "mindlint.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "MindLint backend URL for sync"
+        },
+        "mindlint.trackTyping": {
+          "type": "boolean",
+          "default": true,
+          "description": "Track typing cadence and patterns"
+        },
+        "mindlint.trackErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Track lint errors and diagnostics"
+        },
+        "mindlint.minSessionDuration": {
+          "type": "number",
+          "default": 5,
+          "description": "Minimum session duration in minutes to record"
+        }
+      }
+    }
+  }
+}
