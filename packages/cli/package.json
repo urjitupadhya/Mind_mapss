@@ -10,6 +10,7 @@
     "scripts": {
         "start": "node bin/mindctl.js",
         "dev": "node --watch bin/mindctl.js",
+        "build": "echo 'CLI does not require build'",
         "test": "node --test"
     },
     "keywords": [

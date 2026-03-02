@@ -40,7 +40,7 @@ export default function EnvironmentContext({ realtimeData }) {
   useEffect(() => {
     const hour = new Date().getHours()
     const dayOfWeek = new Date().getDay()
-    const factors: string[] = []
+    const factors = []
     let riskScore = 0
 
     if (hour >= 22 || hour < 6) {

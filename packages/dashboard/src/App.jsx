@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import CognitiveHeatmap from './components/CognitiveHeatmap'
 import ForecastTimeline from './components/ForecastTimeline'
@@ -9,6 +9,21 @@ import ProductivityQuadrant from './components/ProductivityQuadrant'
 import Onboarding from './components/Onboarding'
 import Gamification from './components/Gamification'
 import EnvironmentContext from './components/EnvironmentContext'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+
+const fetchWithRetry = async (url, options = {}, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options)
+      if (response.ok) return response
+    } catch (e) {
+      if (i === retries - 1) throw e
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)))
+    }
+  }
+  throw new Error(`Failed after ${retries} attempts`)
+}
 
 const generateDemoData = () => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -45,8 +60,72 @@ const generateDemoData = () => {
   return { heatmapData, forecastData, weeklyData }
 }
 
+const fetchRealData = async (userId) => {
+  try {
+    const [aggregatesRes, bpiRes, forecastRes] = await Promise.all([
+      fetchWithRetry(`${API_BASE}/api/aggregates/${userId}?days=7`),
+      fetchWithRetry(`${API_BASE}/api/bpi/${userId}?days=7`),
+      fetchWithRetry(`${API_BASE}/api/forecasts/${userId}`)
+    ])
+
+    const aggregates = await aggregatesRes.json()
+    const bpi = await bpiRes.json()
+    const forecasts = await forecastRes.json()
+
+    if (!aggregates.aggregates || aggregates.aggregates.length === 0) {
+      return null
+    }
+
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    const hours = Array.from({ length: 24 }, (_, i) => i)
+
+    const heatmapData = days.map((day, dayIndex) => {
+      const dayAggregates = aggregates.aggregates.filter(a => {
+        const d = new Date(a.date)
+        return d.getDay() === (dayIndex + 1) % 7
+      })
+      return {
+        day,
+        hours: hours.map(hour => {
+          const hourData = dayAggregates.find(a => a.hour === hour)
+          return {
+            hour,
+            stability: hourData?.avg_stability || 70
+          }
+        })
+      }
+    })
+
+    const forecastData = forecasts.forecasts?.slice(0, 24).map(f => ({
+      hour: f.hour,
+      predicted_stability: f.predicted_stability,
+      risk_score: f.risk_score,
+      confidence: f.confidence
+    })) || []
+
+    const weeklyData = days.map((day, dayIndex) => {
+      const dayAggregates = aggregates.aggregates.filter(a => {
+        const d = new Date(a.date)
+        return d.getDay() === (dayIndex + 1) % 7
+      })
+      const avgStability = dayAggregates.reduce((s, a) => s + (a.avg_stability || 0), 0) / (dayAggregates.length || 1)
+      return {
+        day,
+        stability: avgStability || 70,
+        complexity: 4 + Math.random() * 4,
+        sessions: dayAggregates.length || 0
+      }
+    })
+
+    return { heatmapData, forecastData, weeklyData, bpi: bpi.bpi }
+  } catch (e) {
+    console.log('Using demo data:', e.message)
+    return null
+  }
+}
+
 function App() {
-  const [data, setData] = useState(generateDemoData())
+  const [data, setData] = useState(null)
   const [userId] = useState(() => localStorage.getItem('mindlint_userId') || 'demo-user')
   const [currentStability, setCurrentStability] = useState(78)
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -57,6 +136,25 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return localStorage.getItem('mindlint_onboarding_complete') !== 'true'
   })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true)
+      const realData = await fetchRealData(userId)
+      if (realData) {
+        setData(realData)
+        if (realData.bpi && realData.bpi.length > 0) {
+          const avgBPI = realData.bpi.reduce((sum, m) => sum + (m.burnout_probability || 0), 0) / realData.bpi.length
+          setBpiScore(Math.round(avgBPI))
+        }
+      } else {
+        setData(generateDemoData())
+      }
+      setLoading(false)
+    }
+    loadData()
+  }, [userId])
 
   useEffect(() => {
     let ws = null

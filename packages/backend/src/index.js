@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { initDatabase, getOrCreateUser, upsertHourlyAggregate, getHourlyAggregates, getForecasts, saveInsight, getRecentInsights, getUserStats, saveBPIMetrics, getBPIMetrics } from './db/init.js';
+import { initDatabase, getOrCreateUser, upsertHourlyAggregate, getHourlyAggregates, getForecasts, saveInsight, getRecentInsights, getUserStats, saveBPIMetrics, getBPIMetrics, getGamificationData } from './db/init.js';
 import { processTelemetry } from './services/telemetry.js';
 import { generateForecast } from './services/forecast.js';
 import { generateMegaLLMInsight } from './services/megallm.js';
@@ -27,35 +27,7 @@ fastify.get('/api/health', async () => {
 
 fastify.post('/api/telemetry', async (request, reply) => {
   try {
-    const body = request.body as {
-      userId?: string;
-      sessionId: string;
-      timestamp: number;
-      metrics: {
-        keystrokeCount: number;
-        errorCount: number;
-        complexityCount: number;
-        totalEvents: number;
-        undoSpikes: number;
-        fileSwitches: number;
-      };
-      aggregates: {
-        avg_stability: number;
-        error_rate: number;
-        complexity_index: number;
-        typing_cadence_variance: number;
-        undo_spikes: number;
-        file_switches: number;
-        session_duration: number;
-        cognitive_score?: number;
-        burnout_probability?: number;
-        flow_state?: number;
-        ema_cognitive_score?: number;
-        ema_stability?: number;
-      };
-      weighted_breakdown?: Array<{ metric: string; raw: number; normalized: number; weighted: number }>;
-      normalized_metrics?: object;
-    };
+    const body = request.body;
 
     const userId = getOrCreateUser(db, body.userId);
 
@@ -114,8 +86,8 @@ fastify.post('/api/telemetry', async (request, reply) => {
 });
 
 fastify.get('/api/aggregates/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
-  const { days = '7' } = request.query as { days?: string };
+  const { userId } = request.params;
+  const { days = '7' } = request.query;
 
   try {
     const aggregates = getHourlyAggregates(db, userId, parseInt(days));
@@ -127,8 +99,8 @@ fastify.get('/api/aggregates/:userId', async (request, reply) => {
 });
 
 fastify.get('/api/forecasts/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
-  const { date } = request.query as { date?: string };
+  const { userId } = request.params;
+  const { date } = request.query;
 
   try {
     const forecasts = getForecasts(db, userId, date);
@@ -140,7 +112,7 @@ fastify.get('/api/forecasts/:userId', async (request, reply) => {
 });
 
 fastify.post('/api/forecast/generate', async (request, reply) => {
-  const body = request.body as { userId: string };
+  const body = request.body;
 
   try {
     const historicalData = getHourlyAggregates(db, body.userId, 14);
@@ -153,12 +125,12 @@ fastify.post('/api/forecast/generate', async (request, reply) => {
 });
 
 fastify.get('/api/insights/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
-  const { limit = '10', type } = request.query as { limit?: string; type?: string };
+  const { userId } = request.params;
+  const { limit = '10', type } = request.query;
 
   try {
     const insights = getRecentInsights(db, userId, parseInt(limit));
-    return { insights: type ? insights.filter(i => (i as { insight_type: string }).insight_type === type) : insights };
+    return { insights: type ? insights.filter(i => i.insight_type === type) : insights };
   } catch (error) {
     fastify.log.error(error);
     reply.status(500).send({ error: 'Failed to fetch insights' });
@@ -166,11 +138,7 @@ fastify.get('/api/insights/:userId', async (request, reply) => {
 });
 
 fastify.post('/api/insights/generate', async (request, reply) => {
-  const body = request.body as {
-    userId: string;
-    insightType: 'session' | 'weekly' | 'recovery' | 'forecast' | 'nudge';
-    context: object;
-  };
+  const body = request.body;
 
   try {
     const insight = await generateMegaLLMInsight(body.insightType, body.context);
@@ -189,7 +157,7 @@ fastify.post('/api/insights/generate', async (request, reply) => {
 });
 
 fastify.get('/api/stats/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
+  const { userId } = request.params;
 
   try {
     const stats = getUserStats(db, userId);
@@ -201,8 +169,8 @@ fastify.get('/api/stats/:userId', async (request, reply) => {
 });
 
 fastify.get('/api/bpi/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
-  const { days = '7' } = request.query as { days?: string };
+  const { userId } = request.params;
+  const { days = '7' } = request.query;
 
   try {
     const bpiMetrics = getBPIMetrics(db, userId, parseInt(days || '7'));
@@ -214,7 +182,7 @@ fastify.get('/api/bpi/:userId', async (request, reply) => {
 });
 
 fastify.get('/api/quadrant/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
+  const { userId } = request.params;
 
   try {
     const bpiMetrics = getBPIMetrics(db, userId, 7);
@@ -227,17 +195,7 @@ fastify.get('/api/quadrant/:userId', async (request, reply) => {
 });
 
 fastify.post('/api/recovery/generate', async (request, reply) => {
-  const body = request.body as {
-    strainLevel: 'low' | 'moderate' | 'high' | 'critical';
-    cognitiveScore: number;
-    burnoutProbability: number;
-    sessionDuration: number;
-    timeSinceLastBreak: number;
-    hourOfDay: number;
-    complexityIndex: number;
-    errorRate: number;
-    fileSwitchRate: number;
-  };
+  const body = request.body;
 
   try {
     const recovery = await generateRecoverySuggestions(body);
@@ -249,7 +207,7 @@ fastify.post('/api/recovery/generate', async (request, reply) => {
 });
 
 fastify.get('/api/gamification/:userId', async (request, reply) => {
-  const { userId } = request.params as { userId: string };
+  const { userId } = request.params;
 
   try {
     const gamificationData = getGamificationData(db, userId);
@@ -257,14 +215,14 @@ fastify.get('/api/gamification/:userId', async (request, reply) => {
     const recentAggregates = getHourlyAggregates(db, userId, 30);
     
     const totalHours = Math.round((stats.totalTime || 0) / 3600);
-    const daysTracked = new Set(recentAggregates.map((a: { date: string }) => a.date)).size;
-    const lateSessions = recentAggregates.filter((a: { hour: number }) => a.hour >= 22 || a.hour < 6).length;
-    const earlySessions = recentAggregates.filter((a: { hour: number }) => a.hour >= 5 && a.hour < 8).length;
+    const daysTracked = new Set(recentAggregates.map((a) => a.date)).size;
+    const lateSessions = recentAggregates.filter((a) => a.hour >= 22 || a.hour < 6).length;
+    const earlySessions = recentAggregates.filter((a) => a.hour >= 5 && a.hour < 8).length;
 
     const gamificationStats = {
       totalSessions: stats.totalSessions || 0,
-      currentStreak: gamificationData.find((g: { streak_type: string }) => g.streak_type === 'focus')?.current_streak || 0,
-      longestStreak: gamificationData.find((g: { streak_type: string }) => g.streak_type === 'focus')?.longest_streak || 0,
+      currentStreak: gamificationData.find((g) => g.streak_type === 'focus')?.current_streak || 0,
+      longestStreak: gamificationData.find((g) => g.streak_type === 'focus')?.longest_streak || 0,
       totalHours,
       earlySessions,
       lateSessions,
@@ -272,12 +230,12 @@ fastify.get('/api/gamification/:userId', async (request, reply) => {
       lowStreakMinutes: 180,
       longestSession: stats.avgSessionLength || 0,
       daysTracked,
-      focusStreak: gamificationData.find((g: { streak_type: string }) => g.streak_type === 'focus')?.current_streak || 0,
-      recoveryStreak: gamificationData.find((g: { streak_type: string }) => g.streak_type === 'recovery')?.current_streak || 0,
+      focusStreak: gamificationData.find((g) => g.streak_type === 'focus')?.current_streak || 0,
+      recoveryStreak: gamificationData.find((g) => g.streak_type === 'recovery')?.current_streak || 0,
       cleanCodeDays: Math.floor((daysTracked || 0) * 0.6)
     };
 
-    const badges: string[] = [];
+    const badges = [];
     if (gamificationStats.totalSessions >= 1) badges.push('first_session');
     if (gamificationStats.currentStreak >= 3) badges.push('streak_3');
     if (gamificationStats.currentStreak >= 7) badges.push('streak_7');
@@ -297,7 +255,7 @@ fastify.get('/api/gamification/:userId', async (request, reply) => {
 });
 
 fastify.get('/ws/:userId', { websocket: true }, (socket, request) => {
-  const { userId } = request.params as { userId: string };
+  const { userId } = request.params;
   
   wsClients.set(userId, socket);
   
@@ -321,14 +279,133 @@ fastify.get('/ws/:userId', { websocket: true }, (socket, request) => {
   socket.send(JSON.stringify({ type: 'connected', userId, timestamp: Date.now() }));
 });
 
-function broadcastToUser(userId: string, message: object) {
+fastify.get('/api/health', async () => {
+  return { status: 'ok', timestamp: Date.now(), version: '1.0.0' };
+});
+
+fastify.post('/api/sessions', async (request, reply) => {
+  const body = request.body;
+  try {
+    const userId = getOrCreateUser(db, body.userId);
+    const { createSession } = await import('./db/init.js');
+    const session = createSession(db, userId, {
+      projectPath: body.projectPath,
+      language: body.language
+    });
+    return { session };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to create session' });
+  }
+});
+
+fastify.put('/api/sessions/:sessionId', async (request, reply) => {
+  const { sessionId } = request.params;
+  try {
+    const { endSession } = await import('./db/init.js');
+    endSession(db, sessionId);
+    return { success: true };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to end session' });
+  }
+});
+
+fastify.get('/api/sessions/:userId', async (request, reply) => {
+  const { userId } = request.params;
+  const { limit = '20' } = request.query;
+  try {
+    const sessions = db.prepare(`
+      SELECT * FROM sessions 
+      WHERE user_id = ? 
+      ORDER BY started_at DESC 
+      LIMIT ?
+    `).all(userId, parseInt(limit));
+    return { sessions };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to fetch sessions' });
+  }
+});
+
+fastify.get('/api/weekly-bpi/:userId', async (request, reply) => {
+  const { userId } = request.params;
+  try {
+    const { getWeeklyBPI } = await import('./db/init.js');
+    const weeklyBPI = getWeeklyBPI(db, userId);
+    return { weeklyBPI };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to fetch weekly BPI' });
+  }
+});
+
+fastify.post('/api/preferences', async (request, reply) => {
+  const body = request.body;
+  try {
+    const userId = getOrCreateUser(db, body.userId);
+    const { saveUserPreferences } = await import('./db/init.js');
+    saveUserPreferences(db, userId, {
+      codingStartHour: body.codingStartHour,
+      codingEndHour: body.codingEndHour,
+      sleepStartHour: body.sleepStartHour,
+      sleepEndHour: body.sleepEndHour
+    });
+    return { success: true };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to save preferences' });
+  }
+});
+
+fastify.get('/api/preferences/:userId', async (request, reply) => {
+  const { userId } = request.params;
+  try {
+    const { getUserPreferences } = await import('./db/init.js');
+    const prefs = getUserPreferences(db, userId);
+    return { preferences: prefs };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to fetch preferences' });
+  }
+});
+
+fastify.post('/api/onboarding/complete', async (request, reply) => {
+  const body = request.body;
+  try {
+    const userId = getOrCreateUser(db, body.userId);
+    const { completeOnboarding } = await import('./db/init.js');
+    completeOnboarding(db, userId);
+    return { success: true };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to complete onboarding' });
+  }
+});
+
+fastify.get('/api/daily-summary/:userId', async (request, reply) => {
+  const { userId } = request.params;
+  const { date } = request.query;
+  try {
+    const summary = db.prepare(`
+      SELECT * FROM daily_summaries 
+      WHERE user_id = ? AND date = ?
+    `).get(userId, date || new Date().toISOString().split('T')[0]);
+    return { summary };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.status(500).send({ error: 'Failed to fetch daily summary' });
+  }
+});
+
+function broadcastToUser(userId, message) {
   const client = wsClients.get(userId);
   if (client && client.readyState === 1) {
     client.send(JSON.stringify(message));
   }
 }
 
-function broadcastToAll(message: object) {
+function broadcastToAll(message) {
   for (const client of wsClients.values()) {
     if (client.readyState === 1) {
       client.send(JSON.stringify(message));
