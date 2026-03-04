@@ -1,6 +1,12 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 import { initDatabase, getOrCreateUser, upsertHourlyAggregate, getHourlyAggregates, getForecasts, saveInsight, getRecentInsights, getUserStats, saveBPIMetrics, getBPIMetrics, getGamificationData } from './db/init';
 import { processTelemetry } from './services/telemetry';
 import { generateForecast } from './services/forecast';
@@ -18,6 +24,26 @@ await fastify.register(cors, {
 });
 
 await fastify.register(websocket);
+
+// Register static files for the dashboard
+fastify.register(fastifyStatic, {
+  root: join(__dirname, '../../dashboard/dist'),
+  prefix: '/',
+  wildcard: true
+});
+
+// Fallback for SPA: Redirect all non-API / non-Static requests to index.html
+fastify.setNotFoundHandler((request, reply) => {
+  if (request.raw.url && request.raw.url.startsWith('/api')) {
+    reply.status(404).send({
+      message: `Route ${request.method}:${request.url} not found`,
+      error: 'Not Found',
+      statusCode: 404
+    });
+  } else {
+    reply.sendFile('index.html');
+  }
+});
 
 const wsClients = new Map();
 

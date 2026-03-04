@@ -110,7 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function setupIdleDetection() {
-  vscode.window.onDidChangeWindowState((windowState) => {
+  vscode.window.onDidChangeWindowState((windowState: vscode.WindowState) => {
     if (windowState.focused) {
       if (isIdle) {
         isIdle = false;
@@ -165,7 +165,7 @@ function getStrainColor(strain: string): string {
 function setupTelemetryListeners() {
   let keystrokeTimeout: NodeJS.Timeout | null = null;
 
-  vscode.workspace.onDidChangeTextDocument((event) => {
+  vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
     if (!telemetryCollector.isEnabled() || isIdle) return;
 
     resetIdleTimer();
@@ -194,11 +194,11 @@ function setupTelemetryListeners() {
     }
   });
 
-  vscode.languages.onDidChangeDiagnostics((event) => {
+  vscode.languages.onDidChangeDiagnostics((event: vscode.DiagnosticChangeEvent) => {
     if (!telemetryCollector.isEnabled()) return;
 
     for (const [uri, diagnostics] of event.uris) {
-      const errorCount = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length;
+      const errorCount = diagnostics.filter((d: vscode.Diagnostic) => d.severity === vscode.DiagnosticSeverity.Error).length;
       if (errorCount > 0) {
         for (let i = 0; i < errorCount; i++) {
           metricsAggregator.addError();
@@ -208,12 +208,12 @@ function setupTelemetryListeners() {
         timestamp: Date.now(),
         documentUri: uri.toString(),
         errorCount,
-        warningCount: diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length
+        warningCount: diagnostics.filter((d: vscode.Diagnostic) => d.severity === vscode.DiagnosticSeverity.Warning).length
       });
     }
   });
 
-  vscode.window.onDidChangeActiveTextEditor((editor) => {
+  vscode.window.onDidChangeActiveTextEditor((editor: vscode.TextEditor | undefined) => {
     if (!telemetryCollector.isEnabled() || !editor || isIdle) return;
 
     telemetryCollector.trackFileSwitch({
@@ -224,7 +224,7 @@ function setupTelemetryListeners() {
     metricsAggregator.addFileSwitch();
   });
 
-  vscode.workspace.onDidSaveTextDocument((document) => {
+  vscode.workspace.onDidSaveTextDocument((document: vscode.TextDocument) => {
     if (!telemetryCollector.isEnabled()) return;
 
     const currentContent = document.getText();
