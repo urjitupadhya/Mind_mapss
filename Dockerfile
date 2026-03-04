@@ -48,4 +48,4 @@ USER mindlint
 # The app listens on process.env.PORT || 3001
 EXPOSE 3001
 
-CMD ["node", "packages/backend/src/index.js"]
+CMD ["npx", "tsx", "packages/backend/src/index.ts"]
