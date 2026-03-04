@@ -45,6 +45,9 @@ COPY --from=builder /app/node_modules ./node_modules
 
 USER mindlint
 
+# Create data directory for SQLite database
+RUN mkdir -p /app/packages/backend/data
+
 # The app listens on process.env.PORT || 3001
 EXPOSE 3001
 
