@@ -1,11 +1,8 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const dbPath = process.env.DB_PATH || join(__dirname, '../../data/mindlint.db');
+const dbPath = process.env.DB_PATH || join(process.cwd(), 'packages/backend/data/mindlint.db');
 
 export function initDatabase() {
   const db = new Database(dbPath);
