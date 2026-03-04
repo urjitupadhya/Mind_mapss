@@ -1,10 +1,19 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import { join } from 'path';
+import { dirname, join } from 'path';
+import fs from 'fs';
 
 const dbPath = process.env.DB_PATH || '/app/data/mindlint.db';
 
 export function initDatabase() {
+  console.log('🔍 Starting database with path:', dbPath);
+
+  const dir = dirname(dbPath);
+  if (!fs.existsSync(dir)) {
+    console.log('📁 Creating directory:', dir);
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
   const db = new Database(dbPath);
 
   db.pragma('journal_mode = WAL');
