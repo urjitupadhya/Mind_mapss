@@ -43,10 +43,10 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/node_modules ./node_modules
 
-USER mindlint
+# Create data directory for SQLite database (before switching to non-root user)
+RUN mkdir -p /app/packages/backend/data && chown -R mindlint:nodejs /app/packages/backend/data
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/packages/backend/data
+USER mindlint
 
 # The app listens on process.env.PORT || 3001
 EXPOSE 3001
