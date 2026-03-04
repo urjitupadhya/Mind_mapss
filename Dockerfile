@@ -7,6 +7,7 @@ FROM base AS deps
 COPY package*.json ./
 COPY package-lock.json* ./
 
+RUN apk add --no-cache python3 make g++ 
 RUN npm ci --workspaces --if-present
 
 FROM base AS builder

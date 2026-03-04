@@ -11,6 +11,7 @@ import Gamification from './components/Gamification'
 import EnvironmentContext from './components/EnvironmentContext'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const WS_BASE = API_BASE.replace(/^http/, 'ws')
 
 const fetchWithRetry = async (url, options = {}, retries = 3) => {
   for (let i = 0; i < retries; i++) {
@@ -28,7 +29,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
 const generateDemoData = () => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const hours = Array.from({ length: 24 }, (_, i) => i)
-  
+
   const heatmapData = days.map(day => ({
     day,
     hours: hours.map(hour => {
@@ -38,7 +39,7 @@ const generateDemoData = () => {
       if (hour >= 20 && hour <= 22) stability = 60
       if (hour >= 23 || hour <= 5) stability = 45
       if (day === 'Sat' || day === 'Sun') stability -= 15
-      
+
       return { hour, stability: Math.max(20, Math.min(100, stability + (Math.random() * 20 - 10))) }
     })
   }))
@@ -177,7 +178,7 @@ function App() {
 
     const connectWebSocket = () => {
       try {
-        const wsUrl = 'ws://localhost:3001/ws/' + userId
+        const wsUrl = `${WS_BASE}/ws/${userId}`
         ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {
@@ -266,7 +267,7 @@ function App() {
 
             <div className="text-right">
               <p className="text-xs text-slate-400 uppercase tracking-wider">Current Stability</p>
-              <motion.p 
+              <motion.p
                 className={`text-2xl font-bold ${getStabilityColor(currentStability)}`}
                 key={Math.round(currentStability)}
                 initial={{ scale: 1.1 }}
@@ -275,9 +276,8 @@ function App() {
                 {Math.round(currentStability)}%
               </motion.p>
             </div>
-            <div className={`px-4 py-2 rounded-full text-sm font-medium ${
-              currentStability >= 60 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
-            }`}>
+            <div className={`px-4 py-2 rounded-full text-sm font-medium ${currentStability >= 60 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-orange-500/20 text-orange-400'
+              }`}>
               {getStabilityLabel(currentStability)}
             </div>
           </div>
@@ -298,11 +298,10 @@ function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-blue-600 text-white' 
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
+                }`}
             >
               {tab.icon} {tab.label}
             </button>
@@ -316,7 +315,7 @@ function App() {
         ) : (
           <>
             {activeTab === 'dashboard' && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="grid grid-cols-1 lg:grid-cols-3 gap-6"
@@ -338,61 +337,61 @@ function App() {
             )}
 
             {activeTab === 'forecast' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            <ForecastTimeline data={data?.forecastData} />
-          </motion.div>
-        )}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <ForecastTimeline data={data?.forecastData} />
+              </motion.div>
+            )}
 
-        {activeTab === 'insights' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <AIReport />
-          </motion.div>
-        )}
+            {activeTab === 'insights' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <AIReport />
+              </motion.div>
+            )}
 
-        {activeTab === 'quadrant' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-2xl mx-auto"
-          >
-            <ProductivityQuadrant data={quadrantData} />
-          </motion.div>
-        )}
+            {activeTab === 'quadrant' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-2xl mx-auto"
+              >
+                <ProductivityQuadrant data={quadrantData} />
+              </motion.div>
+            )}
 
-        {activeTab === 'sessions' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <StabilityChart data={data?.weeklyData} />
-          </motion.div>
-        )}
+            {activeTab === 'sessions' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <StabilityChart data={data?.weeklyData} />
+              </motion.div>
+            )}
 
-        {activeTab === 'gamification' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Gamification userId={userId} />
-          </motion.div>
-        )}
+            {activeTab === 'gamification' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Gamification userId={userId} />
+              </motion.div>
+            )}
 
-        {activeTab === 'environment' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-2xl mx-auto"
-          >
-            <EnvironmentContext realtimeData={realtimeData} />
-          </motion.div>
-        )}
+            {activeTab === 'environment' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-2xl mx-auto"
+              >
+                <EnvironmentContext realtimeData={realtimeData} />
+              </motion.div>
+            )}
           </>
         )}
       </main>
