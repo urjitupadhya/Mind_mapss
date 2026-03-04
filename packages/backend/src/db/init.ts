@@ -1,9 +1,21 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import { dirname, join } from 'path';
+import { dirname, join, isAbsolute, basename } from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.DB_PATH || '/app/data/mindlint.db';
+// Resolve database path: if relative or just a filename, place it in /app/data/
+function resolveDbPath(): string {
+  const envPath = process.env.DB_PATH;
+  const dataDir = '/app/data';
+
+  if (!envPath) return join(dataDir, 'mindlint.db');
+  if (isAbsolute(envPath)) return envPath;
+
+  // Relative path like ./mindlint.db → put in /app/data/
+  return join(dataDir, basename(envPath));
+}
+
+const dbPath = resolveDbPath();
 
 export function initDatabase() {
   console.log('🔍 Starting database with path:', dbPath);
