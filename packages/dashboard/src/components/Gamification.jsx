@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin)
+
 const BADGES = [
   { id: 'first_session', name: 'First Steps', description: 'Complete your first tracked session', emoji: '🌟', condition: (stats) => stats.totalSessions >= 1 },
   { id: 'streak_3', name: 'On a Roll', description: '3-day coding streak', emoji: '🔥', condition: (stats) => stats.currentStreak >= 3 },
@@ -37,7 +39,7 @@ export default function Gamification({ userId }) {
   useEffect(() => {
     const fetchGamification = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/gamification/${userId}`)
+        const response = await fetch(`${API_BASE}/api/gamification/${userId}`)
         if (response.ok) {
           const data = await response.json()
           if (data.stats) setStats(data.stats)
@@ -63,7 +65,7 @@ export default function Gamification({ userId }) {
     <div className="space-y-6">
       {/* Recent Achievements Toast */}
       {recentAchievements.length > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
@@ -104,18 +106,17 @@ export default function Gamification({ userId }) {
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <span>🏆</span> Achievements ({unlockedBadges.length}/{BADGES.length})
         </h2>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {BADGES.map(badge => {
             const unlocked = unlockedBadges.includes(badge.id)
             return (
               <motion.div
                 key={badge.id}
-                className={`p-4 rounded-xl border-2 text-center transition-all ${
-                  unlocked 
-                    ? 'border-yellow-500/50 bg-yellow-500/10' 
-                    : 'border-slate-600 bg-slate-700/30 opacity-50'
-                }`}
+                className={`p-4 rounded-xl border-2 text-center transition-all ${unlocked
+                  ? 'border-yellow-500/50 bg-yellow-500/10'
+                  : 'border-slate-600 bg-slate-700/30 opacity-50'
+                  }`}
                 whileHover={{ scale: 1.05 }}
               >
                 <span className="text-3xl block mb-2">{badge.emoji}</span>
@@ -184,7 +185,7 @@ export default function Gamification({ userId }) {
                   <span className="text-slate-500">{Math.round(milestone.current)}/{milestone.target}</span>
                 </div>
                 <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, (milestone.current / milestone.target) * 100)}%` }}
