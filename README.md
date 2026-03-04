@@ -12,6 +12,10 @@
 Experience the full cognitive analytics suite live on Render:
 **[https://mind-mapss.onrender.com](https://mind-mapss.onrender.com)**
 
+### 🎬 Product Demo
+Watch the MindLint ecosystem in action:
+**[Watch on YouTube](https://www.youtube.com/watch?v=xCcwFuubo-o)**
+
 ### 💻 Global CLI
 MindLint is live on the official npm registry. Install it globally on your machine:
 ```bash
