@@ -14,6 +14,14 @@ export default function CognitiveHeatmap({ data }) {
     return alpha
   }
 
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center h-48 text-slate-500">
+        Loading heatmap data...
+      </div>
+    )
+  }
+
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[700px]">

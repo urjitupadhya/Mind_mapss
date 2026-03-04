@@ -57,7 +57,14 @@ const generateDemoData = () => {
     sessions: Math.floor(3 + Math.random() * 5)
   }))
 
-  return { heatmapData, forecastData, weeklyData }
+  const quadrantData = {
+    highHigh: { count: 8, label: 'High Focus / High Energy' },
+    highLow: { count: 4, label: 'High Focus / Low Energy' },
+    lowHigh: { count: 3, label: 'Low Focus / High Energy' },
+    lowLow: { count: 2, label: 'Low Focus / Low Energy' }
+  }
+
+  return { heatmapData, forecastData, weeklyData, quadrantData, bpiScore: 35 }
 }
 
 const fetchRealData = async (userId) => {
@@ -137,6 +144,7 @@ function App() {
     return localStorage.getItem('mindlint_onboarding_complete') !== 'true'
   })
   const [loading, setLoading] = useState(true)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -144,12 +152,17 @@ function App() {
       const realData = await fetchRealData(userId)
       if (realData) {
         setData(realData)
+        setIsDemoMode(false)
         if (realData.bpi && realData.bpi.length > 0) {
           const avgBPI = realData.bpi.reduce((sum, m) => sum + (m.burnout_probability || 0), 0) / realData.bpi.length
           setBpiScore(Math.round(avgBPI))
         }
       } else {
-        setData(generateDemoData())
+        const demo = generateDemoData()
+        setData(demo)
+        setQuadrantData(demo.quadrantData)
+        setBpiScore(demo.bpiScore)
+        setIsDemoMode(true)
       }
       setLoading(false)
     }
@@ -157,6 +170,8 @@ function App() {
   }, [userId])
 
   useEffect(() => {
+    if (isDemoMode) return
+
     let ws = null
     let reconnectTimeout = null
 
@@ -201,40 +216,7 @@ function App() {
       if (ws) ws.close()
       if (reconnectTimeout) clearTimeout(reconnectTimeout)
     }
-  }, [userId])
-
-  useEffect(() => {
-    const fetchQuadrant = async () => {
-      try {
-        const response = await fetch(`http://localhost:3001/api/quadrant/${userId}`)
-        if (response.ok) {
-          const data = await response.json()
-          setQuadrantData(data.quadrant)
-        }
-      } catch (e) {
-        setQuadrantData(null)
-      }
-    }
-    fetchQuadrant()
-  }, [userId])
-
-  useEffect(() => {
-    const fetchBPI = async () => {
-      try {
-        const response = await fetch(`http://localhost:3001/api/bpi/${userId}?days=7`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.bpi && data.bpi.length > 0) {
-            const avgBPI = data.bpi.reduce((sum, m) => sum + (m.burnout_probability || 0), 0) / data.bpi.length
-            setBpiScore(Math.round(avgBPI))
-          }
-        }
-      } catch (e) {
-        setBpiScore(null)
-      }
-    }
-    fetchBPI()
-  }, [userId])
+  }, [userId, isDemoMode])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -327,35 +309,41 @@ function App() {
           ))}
         </div>
 
-        {activeTab === 'dashboard' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          >
-            <div className="lg:col-span-2 bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50 card-hover">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span>🧠</span> Weekly Cognitive Heatmap
-              </h2>
-              <CognitiveHeatmap data={data.heatmapData} />
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-slate-400">Loading...</div>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'dashboard' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+              >
+                <div className="lg:col-span-2 bg-slate-800/50 rounded-2xl p-6 border border-slate-700/50 card-hover">
+                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span>🧠</span> Weekly Cognitive Heatmap
+                  </h2>
+                  {data && <CognitiveHeatmap data={data.heatmapData} />}
+                </div>
 
-            <div className="space-y-6">
-              <SessionStats bpi={bpiscore} />
-              <ProductivityQuadrant data={quadrantData} />
-              <EnvironmentContext realtimeData={realtimeData} />
-              <AIReport compact />
-            </div>
-          </motion.div>
-        )}
+                <div className="space-y-6">
+                  <SessionStats bpi={bpiscore} />
+                  <ProductivityQuadrant data={quadrantData} />
+                  <EnvironmentContext realtimeData={realtimeData} />
+                  <AIReport compact />
+                </div>
+              </motion.div>
+            )}
 
-        {activeTab === 'forecast' && (
+            {activeTab === 'forecast' && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <ForecastTimeline data={data.forecastData} />
+            <ForecastTimeline data={data?.forecastData} />
           </motion.div>
         )}
 
@@ -383,7 +371,7 @@ function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <StabilityChart data={data.weeklyData} />
+            <StabilityChart data={data?.weeklyData} />
           </motion.div>
         )}
 
@@ -404,6 +392,8 @@ function App() {
           >
             <EnvironmentContext realtimeData={realtimeData} />
           </motion.div>
+        )}
+          </>
         )}
       </main>
 
