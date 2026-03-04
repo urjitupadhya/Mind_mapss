@@ -12,7 +12,7 @@ const fastify = Fastify({ logger: true });
 
 const db = initDatabase();
 
-await fastify.register(cors, { 
+await fastify.register(cors, {
   origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 });
@@ -22,7 +22,7 @@ await fastify.register(websocket);
 const wsClients = new Map();
 
 fastify.get('/api/health', async () => {
-  return { status: 'ok', timestamp: Date.now() };
+  return { status: 'ok', timestamp: Date.now(), version: '1.0.0' };
 });
 
 fastify.post('/api/telemetry', async (request, reply) => {
@@ -142,7 +142,7 @@ fastify.post('/api/insights/generate', async (request, reply) => {
 
   try {
     const insight = await generateMegaLLMInsight(body.insightType, body.context);
-    
+
     saveInsight(db, body.userId, {
       insightType: body.insightType,
       content: insight.message,
@@ -213,7 +213,7 @@ fastify.get('/api/gamification/:userId', async (request, reply) => {
     const gamificationData = getGamificationData(db, userId);
     const stats = getUserStats(db, userId);
     const recentAggregates = getHourlyAggregates(db, userId, 30);
-    
+
     const totalHours = Math.round((stats.totalTime || 0) / 3600);
     const daysTracked = new Set(recentAggregates.map((a) => a.date)).size;
     const lateSessions = recentAggregates.filter((a) => a.hour >= 22 || a.hour < 6).length;
@@ -256,9 +256,9 @@ fastify.get('/api/gamification/:userId', async (request, reply) => {
 
 fastify.get('/ws/:userId', { websocket: true }, (socket, request) => {
   const { userId } = request.params;
-  
+
   wsClients.set(userId, socket);
-  
+
   socket.on('close', () => {
     wsClients.delete(userId);
   });
@@ -279,9 +279,6 @@ fastify.get('/ws/:userId', { websocket: true }, (socket, request) => {
   socket.send(JSON.stringify({ type: 'connected', userId, timestamp: Date.now() }));
 });
 
-fastify.get('/api/health', async () => {
-  return { status: 'ok', timestamp: Date.now(), version: '1.0.0' };
-});
 
 fastify.post('/api/sessions', async (request, reply) => {
   const body = request.body;
