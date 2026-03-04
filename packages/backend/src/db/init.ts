@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import { join } from 'path';
 
-const dbPath = process.env.DB_PATH || join(process.cwd(), 'packages/backend/data/mindlint.db');
+const dbPath = process.env.DB_PATH || '/app/data/mindlint.db';
 
 export function initDatabase() {
   const db = new Database(dbPath);
@@ -167,7 +167,7 @@ export function initDatabase() {
 
 // User management functions
 export function getOrCreateUser(db, userId) {
-  const existingUser = userId 
+  const existingUser = userId
     ? db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
     : null;
 
@@ -267,10 +267,10 @@ export function saveForecast(db, userId, data) {
 }
 
 export function getForecasts(db, userId, date) {
-  const query = date 
+  const query = date
     ? 'SELECT * FROM forecasts WHERE user_id = ? AND date = ? ORDER BY hour'
     : 'SELECT * FROM forecasts WHERE user_id = ? ORDER BY date, hour LIMIT 24';
-  
+
   const params = date ? [userId, date] : [userId];
   return db.prepare(query).all(...params);
 }
@@ -376,11 +376,11 @@ export function getWeeklyBPI(db, userId) {
 
 export function saveUserPreferences(db, userId, prefs) {
   const existing = db.prepare('SELECT user_id FROM user_preferences WHERE user_id = ?').get(userId);
-  
+
   if (existing) {
     const updates = [];
     const values = [];
-    
+
     if (prefs.codingStartHour !== undefined) {
       updates.push('coding_start_hour = ?');
       values.push(prefs.codingStartHour);
@@ -397,7 +397,7 @@ export function saveUserPreferences(db, userId, prefs) {
       updates.push('sleep_end_hour = ?');
       values.push(prefs.sleepEndHour);
     }
-    
+
     if (updates.length > 0) {
       values.push(userId);
       db.prepare(`UPDATE user_preferences SET ${updates.join(', ')} WHERE user_id = ?`).run(...values);
@@ -422,7 +422,7 @@ export function getUserPreferences(db, userId) {
 
 export function completeOnboarding(db, userId) {
   const existing = db.prepare('SELECT user_id FROM user_preferences WHERE user_id = ?').get(userId);
-  
+
   if (existing) {
     db.prepare('UPDATE user_preferences SET onboarding_completed = 1 WHERE user_id = ?').run(userId);
   } else {
@@ -441,11 +441,11 @@ export function updateGamification(db, userId, data) {
   if (existing) {
     const current = existing;
     let newStreak = data.increment ? current.current_streak + 1 : 0;
-    
+
     if (newStreak > current.longest_streak) {
       current.longest_streak = newStreak;
     }
-    
+
     db.prepare(`
       UPDATE gamification SET current_streak = ?, longest_streak = ?, last_updated = ? 
       WHERE user_id = ? AND streak_type = ?

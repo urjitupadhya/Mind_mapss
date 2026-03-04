@@ -43,8 +43,8 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/node_modules ./node_modules
 
-# Create data directory for SQLite database (before switching to non-root user)
-RUN mkdir -p /app/packages/backend/data && chown -R mindlint:nodejs /app/packages/backend/data
+# Create data directory for SQLite database
+RUN mkdir -p /app/data && chown -R mindlint:nodejs /app/data
 
 USER mindlint
 
