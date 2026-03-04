@@ -10,7 +10,7 @@ import Onboarding from './components/Onboarding'
 import Gamification from './components/Gamification'
 import EnvironmentContext from './components/EnvironmentContext'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin)
 const WS_BASE = API_BASE.replace(/^http/, 'ws')
 
 const fetchWithRetry = async (url, options = {}, retries = 3) => {
@@ -299,8 +299,8 @@ function App() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
                 }`}
             >
               {tab.icon} {tab.label}
