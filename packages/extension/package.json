@@ -53,7 +53,7 @@
       "properties": {
         "mindlint.backendUrl": {
           "type": "string",
-          "default": "http://localhost:3001",
+          "default": "https://mind-mapss.onrender.com",
           "description": "MindLint backend URL for sync"
         },
         "mindlint.trackTyping": {

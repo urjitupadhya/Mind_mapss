@@ -44,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('mindlint.showDashboard', async () => {
-      const backendUrl = config.get('backendUrl', 'http://localhost:3001');
+      const backendUrl = config.get('backendUrl', 'https://mind-mapss.onrender.com');
       vscode.env.openExternal(vscode.Uri.parse(`${backendUrl.replace(':3001', ':5173')}`));
     })
   );
@@ -74,7 +74,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('mindlint.syncNow', async () => {
       const config = vscode.workspace.getConfiguration('mindlint');
-      await syncToBackend(config.get('backendUrl', 'http://localhost:3001'));
+      await syncToBackend(config.get('backendUrl', 'https://mind-mapss.onrender.com'));
       vscode.window.showInformationMessage('MindLint: Synced successfully');
     })
   );
@@ -86,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
     const config = vscode.workspace.getConfiguration('mindlint');
     const localMode = config.get('localMode', false);
     if (!localMode) {
-      syncToBackend(config.get('backendUrl', 'http://localhost:3001'));
+      syncToBackend(config.get('backendUrl', 'https://mind-mapss.onrender.com'));
     }
     updateStatusBar();
   }, syncInterval);
@@ -167,15 +167,15 @@ function setupTelemetryListeners() {
 
   vscode.workspace.onDidChangeTextDocument((event) => {
     if (!telemetryCollector.isEnabled() || isIdle) return;
-    
+
     resetIdleTimer();
 
     const document = event.document;
     const changes = event.contentChanges;
-    
+
     for (const change of changes) {
       if (keystrokeTimeout) clearTimeout(keystrokeTimeout);
-      
+
       keystrokeTimeout = setTimeout(() => {
         telemetryCollector.trackKeystroke({
           timestamp: Date.now(),
@@ -196,7 +196,7 @@ function setupTelemetryListeners() {
 
   vscode.languages.onDidChangeDiagnostics((event) => {
     if (!telemetryCollector.isEnabled()) return;
-    
+
     for (const [uri, diagnostics] of event.uris) {
       const errorCount = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length;
       if (errorCount > 0) {
@@ -215,7 +215,7 @@ function setupTelemetryListeners() {
 
   vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (!telemetryCollector.isEnabled() || !editor || isIdle) return;
-    
+
     telemetryCollector.trackFileSwitch({
       timestamp: Date.now(),
       documentUri: editor.document.uri.toString(),
@@ -226,14 +226,14 @@ function setupTelemetryListeners() {
 
   vscode.workspace.onDidSaveTextDocument((document) => {
     if (!telemetryCollector.isEnabled()) return;
-    
+
     const currentContent = document.getText();
     const currentHash = hashString(currentContent);
     const hasDiff = currentHash !== lastContentHash;
-    
+
     metricsAggregator.addSaveWithoutDiff(!hasDiff);
     lastContentHash = currentHash;
-    
+
     telemetryCollector.trackSave({
       timestamp: Date.now(),
       documentUri: document.uri.toString(),
@@ -256,7 +256,7 @@ async function syncToBackend(backendUrl: string) {
   try {
     const config = vscode.workspace.getConfiguration('mindlint');
     const localMode = config.get('localMode', false);
-    
+
     if (localMode) {
       console.log('MindLint: Local mode enabled, skipping sync');
       return;
@@ -265,7 +265,7 @@ async function syncToBackend(backendUrl: string) {
     const metrics = metricsAggregator.getAggregates();
     const session = sessionManager.getCurrentSession();
     const weightedScore = metricsAggregator.calculateWeightedScore();
-    
+
     if (!session || metrics.totalEvents === 0) return;
 
     const payload = {
