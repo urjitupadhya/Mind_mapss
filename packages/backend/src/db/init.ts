@@ -165,13 +165,13 @@ export function initDatabase() {
 }
 
 // User management functions
-export function getOrCreateUser(db: Database, userId?: string): string {
+export function getOrCreateUser(db, userId) {
   const existingUser = userId 
     ? db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
     : null;
 
   if (existingUser) {
-    return (existingUser as { id: string }).id;
+    return existingUser.id;
   }
 
   const newUserId = userId || uuidv4();
@@ -180,10 +180,7 @@ export function getOrCreateUser(db: Database, userId?: string): string {
 }
 
 // Session management
-export function createSession(db: Database, userId: string, data: {
-  projectPath?: string;
-  language?: string;
-}) {
+export function createSession(db, userId, data) {
   const sessionId = uuidv4();
   const startedAt = Date.now();
 
@@ -195,9 +192,9 @@ export function createSession(db: Database, userId: string, data: {
   return { id: sessionId, startedAt };
 }
 
-export function endSession(db: Database, sessionId: string) {
+export function endSession(db, sessionId) {
   const endedAt = Date.now();
-  const session = db.prepare('SELECT started_at FROM sessions WHERE id = ?').get(sessionId) as { started_at: number } | undefined;
+  const session = db.prepare('SELECT started_at FROM sessions WHERE id = ?').get(sessionId);
 
   if (session) {
     const durationSeconds = Math.floor((endedAt - session.started_at) / 1000);
@@ -207,18 +204,7 @@ export function endSession(db: Database, sessionId: string) {
 }
 
 // Hourly aggregate functions
-export function upsertHourlyAggregate(db: Database, userId: string, data: {
-  hour: number;
-  date: string;
-  avgStability: number;
-  errorRate: number;
-  complexityIndex: number;
-  typingCadenceVariance: number;
-  undoSpikes: number;
-  fileSwitches: number;
-  sessionCount: number;
-  totalDurationMinutes: number;
-}) {
+export function upsertHourlyAggregate(db, userId, data) {
   db.prepare(`
     INSERT INTO hourly_aggregates 
     (user_id, hour, date, avg_stability, error_rate, complexity_index, typing_cadence_variance, 
@@ -249,7 +235,7 @@ export function upsertHourlyAggregate(db: Database, userId: string, data: {
   );
 }
 
-export function getHourlyAggregates(db: Database, userId: string, days: number = 7) {
+export function getHourlyAggregates(db, userId, days = 7) {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const sinceDate = since.toISOString().split('T')[0];
@@ -262,14 +248,7 @@ export function getHourlyAggregates(db: Database, userId: string, days: number =
 }
 
 // Forecast functions
-export function saveForecast(db: Database, userId: string, data: {
-  hour: number;
-  date: string;
-  predictedStability: number;
-  riskScore: number;
-  confidence: number;
-  contributingFactors: string[];
-}) {
+export function saveForecast(db, userId, data) {
   db.prepare(`
     INSERT INTO forecasts 
     (user_id, hour, date, predicted_stability, risk_score, confidence, contributing_factors, created_at)
@@ -286,7 +265,7 @@ export function saveForecast(db: Database, userId: string, data: {
   );
 }
 
-export function getForecasts(db: Database, userId: string, date?: string) {
+export function getForecasts(db, userId, date) {
   const query = date 
     ? 'SELECT * FROM forecasts WHERE user_id = ? AND date = ? ORDER BY hour'
     : 'SELECT * FROM forecasts WHERE user_id = ? ORDER BY date, hour LIMIT 24';
@@ -296,11 +275,7 @@ export function getForecasts(db: Database, userId: string, date?: string) {
 }
 
 // Insights functions
-export function saveInsight(db: Database, userId: string, data: {
-  insightType: string;
-  content: string;
-  dataPayload?: object;
-}) {
+export function saveInsight(db, userId, data) {
   db.prepare(`
     INSERT INTO insights (user_id, insight_type, content, data_payload, created_at)
     VALUES (?, ?, ?, ?, ?)
@@ -313,7 +288,7 @@ export function saveInsight(db: Database, userId: string, data: {
   );
 }
 
-export function getRecentInsights(db: Database, userId: string, limit: number = 10) {
+export function getRecentInsights(db, userId, limit = 10) {
   return db.prepare(`
     SELECT * FROM insights 
     WHERE user_id = ? 
@@ -323,14 +298,14 @@ export function getRecentInsights(db: Database, userId: string, limit: number = 
 }
 
 // Analytics helpers
-export function getUserStats(db: Database, userId: string) {
+export function getUserStats(db, userId) {
   const sessions = db.prepare(`
     SELECT COUNT(*) as total_sessions, 
            SUM(duration_seconds) as total_time,
            AVG(duration_seconds) as avg_session_length
     FROM sessions 
     WHERE user_id = ? AND ended_at IS NOT NULL
-  `).get(userId) as { total_sessions: number; total_time: number; avg_session_length: number };
+  `).get(userId);
 
   const recentAggregates = db.prepare(`
     SELECT AVG(avg_stability) as avg_stability,
@@ -338,7 +313,7 @@ export function getUserStats(db: Database, userId: string) {
            SUM(total_duration_minutes) as total_minutes
     FROM hourly_aggregates 
     WHERE user_id = ? AND date >= date('now', '-7 days')
-  `).get(userId) as { avg_stability: number; avg_error_rate: number; total_minutes: number };
+  `).get(userId);
 
   return {
     totalSessions: sessions?.total_sessions || 0,
@@ -350,17 +325,7 @@ export function getUserStats(db: Database, userId: string) {
   };
 }
 
-export function saveBPIMetrics(db: Database, userId: string, data: {
-  date: string;
-  hour: number;
-  cognitiveScore: number;
-  burnoutProbability: number;
-  flowState: number;
-  emaCognitiveScore: number;
-  emaStability: number;
-  weightedBreakdown?: string;
-  normalizedMetrics?: string;
-}) {
+export function saveBPIMetrics(db, userId, data) {
   db.prepare(`
     INSERT INTO bpi_metrics 
     (user_id, date, hour, cognitive_score, burnout_probability, flow_state, ema_cognitive_score, ema_stability, weighted_breakdown, normalized_metrics, created_at)
@@ -380,7 +345,7 @@ export function saveBPIMetrics(db: Database, userId: string, data: {
   );
 }
 
-export function getBPIMetrics(db: Database, userId: string, days: number = 7) {
+export function getBPIMetrics(db, userId, days = 7) {
   const since = new Date();
   since.setDate(since.getDate() - days);
   const sinceDate = since.toISOString().split('T')[0];
@@ -392,7 +357,7 @@ export function getBPIMetrics(db: Database, userId: string, days: number = 7) {
   `).all(userId, sinceDate);
 }
 
-export function getWeeklyBPI(db: Database, userId: string) {
+export function getWeeklyBPI(db, userId) {
   return db.prepare(`
     SELECT 
       date,
@@ -408,17 +373,12 @@ export function getWeeklyBPI(db: Database, userId: string) {
   `).all(userId);
 }
 
-export function saveUserPreferences(db: Database, userId: string, prefs: {
-  codingStartHour?: number;
-  codingEndHour?: number;
-  sleepStartHour?: number;
-  sleepEndHour?: number;
-}) {
+export function saveUserPreferences(db, userId, prefs) {
   const existing = db.prepare('SELECT user_id FROM user_preferences WHERE user_id = ?').get(userId);
   
   if (existing) {
-    const updates: string[] = [];
-    const values: any[] = [];
+    const updates = [];
+    const values = [];
     
     if (prefs.codingStartHour !== undefined) {
       updates.push('coding_start_hour = ?');
@@ -455,11 +415,11 @@ export function saveUserPreferences(db: Database, userId: string, prefs: {
   }
 }
 
-export function getUserPreferences(db: Database, userId: string) {
+export function getUserPreferences(db, userId) {
   return db.prepare('SELECT * FROM user_preferences WHERE user_id = ?').get(userId);
 }
 
-export function completeOnboarding(db: Database, userId: string) {
+export function completeOnboarding(db, userId) {
   const existing = db.prepare('SELECT user_id FROM user_preferences WHERE user_id = ?').get(userId);
   
   if (existing) {
@@ -472,16 +432,13 @@ export function completeOnboarding(db: Database, userId: string) {
   }
 }
 
-export function updateGamification(db: Database, userId: string, data: {
-  streakType: string;
-  increment?: boolean;
-}) {
+export function updateGamification(db, userId, data) {
   const existing = db.prepare(`
     SELECT * FROM gamification WHERE user_id = ? AND streak_type = ?
   `).get(userId, data.streakType);
 
   if (existing) {
-    const current = existing as { current_streak: number; longest_streak: number };
+    const current = existing;
     let newStreak = data.increment ? current.current_streak + 1 : 0;
     
     if (newStreak > current.longest_streak) {
@@ -500,6 +457,6 @@ export function updateGamification(db: Database, userId: string, data: {
   }
 }
 
-export function getGamificationData(db: Database, userId: string) {
+export function getGamificationData(db, userId) {
   return db.prepare('SELECT * FROM gamification WHERE user_id = ?').all(userId);
 }

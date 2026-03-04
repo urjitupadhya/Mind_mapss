@@ -1,12 +1,12 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { initDatabase, getOrCreateUser, upsertHourlyAggregate, getHourlyAggregates, getForecasts, saveInsight, getRecentInsights, getUserStats, saveBPIMetrics, getBPIMetrics, getGamificationData } from './db/init.js';
-import { processTelemetry } from './services/telemetry.js';
-import { generateForecast } from './services/forecast.js';
-import { generateMegaLLMInsight } from './services/megallm.js';
-import { generateRecoverySuggestions } from './services/recovery.js';
-import { calculateProductivityQuadrant, calculateWeeklyBPI } from './services/quadrant.js';
+import { initDatabase, getOrCreateUser, upsertHourlyAggregate, getHourlyAggregates, getForecasts, saveInsight, getRecentInsights, getUserStats, saveBPIMetrics, getBPIMetrics, getGamificationData } from './db/init';
+import { processTelemetry } from './services/telemetry';
+import { generateForecast } from './services/forecast';
+import { generateMegaLLMInsight } from './services/megallm';
+import { generateRecoverySuggestions } from './services/recovery';
+import { calculateProductivityQuadrant, calculateWeeklyBPI } from './services/quadrant';
 
 const fastify = Fastify({ logger: true });
 
