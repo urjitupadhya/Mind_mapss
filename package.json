@@ -26,5 +26,9 @@
   ],
   "author": "MindLint",
   "license": "MIT",
+  "dependencies": {
+    "@fastify/static": "^7.0.4",
+    "@fastify/websocket": "^8.3.1"
+  },
   "main": "index.js"
 }
