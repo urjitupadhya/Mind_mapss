@@ -1,64 +1,65 @@
-// MegaLLM Integration Service
-// Handles all AI-powered insights using the configured LLM endpoint
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Configuration - these would come from environment variables in production
-const MEGALLM_API_URL = process.env.MEGALLM_API_URL || 'https://api.megallm.com/v1/chat';
-const MEGALLM_API_KEY = process.env.MEGALLM_API_KEY || '';
-const MEGALLM_MODEL = process.env.MEGALLM_MODEL || 'megallm-2.5';
+// Configuration for Gemini
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 // Default system prompts for each insight type
 const SYSTEM_PROMPTS = {
   session: `You are a behavioural cognitive pattern analyst for MindLint, a developer cognitive observability platform.
-Your role is to analyze aggregated telemetry metrics from coding sessions and provide structured insight.
+Analyze aggregated telemetry metrics from coding sessions and provide structured insight.
 IMPORTANT: Never diagnose medical conditions. Always frame as behavioural patterns and suggestions.
 Never mention specific code content. Never diagnose - use "pattern" language.
-Keep insights constructive and brief. Focus on behaviours, not personality.`,
+Keep insights constructive and brief. Focus on behaviours, not personality.
+Your output MUST be a valid JSON object.`,
 
   weekly: `You are generating a weekly cognitive health report for a developer.
 This is their "weather report" for their coding mind.
 Be warm, supportive, like a thoughtful coach. Use "cognitive" and "behavioural" framing.
-Never clinical or diagnostic. Be specific with times and numbers from the data.`,
+Never clinical or diagnostic. Be specific with times and numbers from the data.
+Your output MUST be a valid JSON object.`,
 
   recovery: `You are suggesting recovery strategies for a developer showing signs of cognitive strain.
 Be actionable and specific. Respect the developer's context.
-Frame as "helpful options" not mandates.`,
+Frame as "helpful options" not mandates.
+Your output MUST be a valid JSON object.`,
 
   forecast: `You are interpreting time-series forecast data for the next 24 hours.
 This helps developers plan their day. Provide clear, actionable guidance.
-Use weather metaphors for accessibility.`,
+Use weather metaphors for accessibility.
+Your output MUST be a valid JSON object.`,
 
   nudge: `Generate a supportive micro-suggestion under 20 words.
 Should feel like a helpful teammate, not a warning.
-Encouraging, not chastising.`
+Encouraging, not chastising.
+Your output MUST be a valid JSON object.`
 };
 
-// Call MegaLLM API
-async function callMegaLLM(messages: Array<{ role: string; content: string }>, temperature: number = 0.5): Promise<string> {
+// Call Gemini API
+async function callGemini(messages: Array<{ role: string; content: string }>, type: string): Promise<string> {
+  if (!genAI) {
+    console.warn('GEMINI_API_KEY not set, using fallback responses');
+    return getFallbackResponse(type);
+  }
+
   try {
-    const response = await fetch(MEGALLM_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MEGALLM_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: MEGALLM_MODEL,
-        messages,
-        temperature,
-        max_tokens: 1000
-      })
-    });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
-    if (!response.ok) {
-      throw new Error(`MegaLLM API error: ${response.status}`);
-    }
+    // Combine system prompt and user history for Gemini
+    const systemPrompt = messages.find(m => m.role === 'system')?.content || '';
+    const userPrompt = messages.find(m => m.role === 'user')?.content || '';
 
-    const data = await response.json();
-    return data.choices[0].message.content;
+    const prompt = `SYSTEM INSTRUCTIONS: ${systemPrompt}\n\nUSER DATA: ${userPrompt}\n\nRespond only with the JSON object as requested.`;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
+    return responseText;
   } catch (error) {
-    console.error('MegaLLM API call failed:', error);
-    // Return fallback response
-    return getFallbackResponse('session');
+    console.error('Gemini API call failed:', error);
+    return getFallbackResponse(type);
   }
 }
 
@@ -74,219 +75,90 @@ function getFallbackResponse(type: string): string {
   return fallbacks[type] || fallbacks.session;
 }
 
-// Generate session analysis
-export async function generateSessionInsight(context: {
-  hour: number;
-  avg_stability: number;
-  error_rate: number;
-  complexity_index: number;
-  session_duration: number;
-  typing_cadence_variance?: number;
-  undo_spikes?: number;
-  file_switches?: number;
-}) {
-  const systemPrompt = SYSTEM_PROMPTS.session;
-  const userPrompt = `Analyze this coding session data and provide insights:
-
-Hour: ${context.hour}
-Stability Score: ${context.avg_stability}/100
-Error Rate: ${context.error_rate}
-Complexity Index: ${context.complexity_index}/10
-Session Duration: ${context.session_duration} minutes
-Typing Variance: ${context.typing_cadence_variance || 'N/A'}
-Undo Spikes: ${context.undo_spikes || 0}
-File Switches: ${context.file_switches || 0}
-
-Provide JSON with: summary, patterns (array), insight, flow_assessment`;
-
+// Helper to sanitize and parse JSON
+function parseJSONResponse(response: string, fallbackType: string): any {
   try {
-    const response = await callMegaLLM([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], 0.4);
-
-    return parseJSONResponse(response, 'session');
-  } catch (error) {
-    return JSON.parse(getFallbackResponse('session'));
-  }
-}
-
-// Generate weekly report
-export async function generateWeeklyInsight(context: {
-  dailyData: Array<{
-    date: string;
-    avg_daily_stability: number;
-    total_session_time: number;
-    error_rate_trend: string;
-    complexity_trend: string;
-    peak_flow_hour: number;
-    strain_spike_hours: number[];
-    recovery_time_avg: number;
-    late_night_sessions: number;
-  }>;
-}) {
-  const systemPrompt = SYSTEM_PROMPTS.weekly;
-  const dailySummary = context.dailyData.map(d => 
-    `Day ${d.date}: Stability ${d.avg_daily_stability}, Time ${d.total_session_time}min, Errors: ${d.error_rate_trend}, Peak: ${d.peak_flow_hour}h`
-  ).join('\n');
-
-  const userPrompt = `Generate a weekly narrative report from this data:
-
-${dailySummary}
-
-Provide JSON with: metaphor, key_patterns (array), strongest_window ({start, end}), concerns (array or null), suggestions (array), closing`;
-
-  try {
-    const response = await callMegaLLM([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], 0.7);
-
-    return parseJSONResponse(response, 'weekly');
-  } catch (error) {
-    return JSON.parse(getFallbackResponse('weekly'));
-  }
-}
-
-// Generate recovery suggestions
-export async function generateRecoveryInsight(context: {
-  current_stability: number;
-  session_length: number;
-  error_rate: number;
-  time_since_last_break: number;
-  hour_of_day: number;
-}) {
-  const systemPrompt = SYSTEM_PROMPTS.recovery;
-  const userPrompt = `Generate recovery suggestions for:
-- Current Stability: ${context.current_stability}/100
-- Session Length: ${context.session_length} minutes
-- Error Rate: ${context.error_rate}
-- Time Since Break: ${context.time_since_last_break} minutes
-- Hour: ${context.hour_of_day}:00
-
-Provide JSON with: immediate, short_term, strategic (each under 15 words)`;
-
-  try {
-    const response = await callMegaLLM([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], 0.5);
-
-    return parseJSONResponse(response, 'recovery');
-  } catch (error) {
-    return JSON.parse(getFallbackResponse('recovery'));
-  }
-}
-
-// Generate forecast interpretation
-export async function generateForecastInterpretation(context: {
-  hourly_forecast: Array<{
-    hour: number;
-    predicted_stability: number;
-    risk_score: number;
-    confidence: number;
-    contributing_factors: string[];
-  }>;
-  last_3_days_avg_stability?: number;
-  weekly_trend?: string;
-}) {
-  const systemPrompt = SYSTEM_PROMPTS.forecast;
-  
-  const forecastSummary = context.hourly_forecast.slice(0, 12).map(f => 
-    `${f.hour}:00 - Stability: ${f.predicted_stability}, Risk: ${f.risk_score}`
-  ).join('\n');
-
-  const userPrompt: string = `Interpret this 24-hour cognitive forecast:
-
-${forecastSummary}
-
-${context.last_3_days_avg_stability ? `3-day avg stability: ${context.last_3_days_avg_stability}` : ''}
-${context.weekly_trend ? `Weekly trend: ${context.weekly_trend}` : ''}
-
-Provide JSON with: weather_summary, optimal_window ({start, end}), high_risk_windows ([{start, end, reason}]), key_insight`;
-
-  try {
-    const response = await callMegaLLM([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], 0.5);
-
-    return parseJSONResponse(response, 'forecast');
-  } catch (error) {
-    return JSON.parse(getFallbackResponse('forecast'));
-  }
-}
-
-// Generate micro-nudge
-export async function generateNudge(context: {
-  trigger_type: string;
-  current_stability: number;
-  session_duration: number;
-}) {
-  const systemPrompt = SYSTEM_PROMPTS.nudge;
-  const userPrompt = `Generate a supportive message under 20 words.
-
-Trigger: ${context.trigger_type}
-Current Stability: ${context.current_stability}/100
-Session Duration: ${context.session_duration} minutes
-
-Provide JSON with: message`;
-
-  try {
-    const response = await callMegaLLM([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ], 0.3);
-
-    return parseJSONResponse(response, 'nudge');
-  } catch (error) {
-    return JSON.parse(getFallbackResponse('nudge'));
-  }
-}
-
-// Main export function for generating insights
-export async function generateMegaLLMInsight(type: string, context: object): Promise<{ message: string; data: object }> {
-  let result: { message: string; data: object };
-
-  switch (type) {
-    case 'session':
-      result = await generateSessionInsight(context as Parameters<typeof generateSessionInsight>[0]);
-      break;
-    case 'weekly':
-      result = await generateWeeklyInsight(context as Parameters<typeof generateWeeklyInsight>[0]);
-      break;
-    case 'recovery':
-      result = await generateRecoveryInsight(context as Parameters<typeof generateRecoveryInsight>[0]);
-      break;
-    case 'forecast':
-      result = await generateForecastInterpretation(context as Parameters<typeof generateForecastInterpretation>[0]);
-      break;
-    case 'nudge':
-      result = await generateNudge(context as Parameters<typeof generateNudge>[0]);
-      break;
-    default:
-      result = JSON.parse(getFallbackResponse('session'));
-  }
-
-  // Ensure result has message field
-  if (!result.message) {
-    result.message = typeof result === 'string' ? result : JSON.stringify(result);
-  }
-
-  return result;
-}
-
-// Helper to parse JSON from LLM response
-function parseJSONResponse(response: string, fallbackType: string): object {
-  try {
-    // Try to find JSON in response
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    // Handle Markdown code blocks often returned by LLMs
+    const cleaned = response.replace(/```json/g, '').replace(/```/g, '').trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
-    return JSON.parse(response);
+    return JSON.parse(cleaned);
   } catch (error) {
-    console.error('Failed to parse LLM response as JSON:', error);
+    console.error('Failed to parse LLM response as JSON:', error, 'Original response:', response);
     return JSON.parse(getFallbackResponse(fallbackType));
   }
+}
+
+// Generate session analysis
+export async function generateSessionInsight(context: any) {
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPTS.session },
+    { role: 'user', content: `Analyze session: Stability ${context.avg_stability}, Errors ${context.error_rate}, Duration ${context.session_duration}m.` }
+  ];
+  const response = await callGemini(messages, 'session');
+  return parseJSONResponse(response, 'session');
+}
+
+// Generate weekly report
+export async function generateWeeklyInsight(context: any) {
+  const dailySummary = context.dailyData.map((d: any) =>
+    `Date ${d.date}: Stability ${d.avg_daily_stability}, Time ${d.total_session_time}min, Peak ${d.peak_flow_hour}h`
+  ).join('\n');
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPTS.weekly },
+    { role: 'user', content: `Daily summary data:\n${dailySummary}` }
+  ];
+  const response = await callGemini(messages, 'weekly');
+  return parseJSONResponse(response, 'weekly');
+}
+
+// Generate recovery suggestions
+export async function generateRecoveryInsight(context: any) {
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPTS.recovery },
+    { role: 'user', content: `Status: Stability ${context.current_stability}, Session ${context.session_length}m, Errors ${context.error_rate}.` }
+  ];
+  const response = await callGemini(messages, 'recovery');
+  return parseJSONResponse(response, 'recovery');
+}
+
+// Generate forecast interpretation
+export async function generateForecastInterpretation(context: any) {
+  const forecastSummary = context.hourly_forecast.slice(0, 12).map((f: any) =>
+    `${f.hour}:00 - Stability ${f.predicted_stability}, Risk ${f.risk_score}`
+  ).join('\n');
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPTS.forecast },
+    { role: 'user', content: `Interpret 24h forecast:\n${forecastSummary}` }
+  ];
+  const response = await callGemini(messages, 'forecast');
+  return parseJSONResponse(response, 'forecast');
+}
+
+// Generate micro-nudge
+export async function generateNudge(context: any) {
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPTS.nudge },
+    { role: 'user', content: `Trigger ${context.trigger_type}, Stability ${context.current_stability}, Duration ${context.session_duration}m.` }
+  ];
+  const response = await callGemini(messages, 'nudge');
+  return parseJSONResponse(response, 'nudge');
+}
+
+// Main export function
+export async function generateMegaLLMInsight(type: string, context: object) {
+  let result;
+  switch (type) {
+    case 'session': result = await generateSessionInsight(context); break;
+    case 'weekly': result = await generateWeeklyInsight(context); break;
+    case 'recovery': result = await generateRecoveryInsight(context); break;
+    case 'forecast': result = await generateForecastInterpretation(context); break;
+    case 'nudge': result = await generateNudge(context); break;
+    default: result = await generateSessionInsight(context);
+  }
+  return { message: result.message || result.summary || JSON.stringify(result), data: result };
 }
