@@ -164,13 +164,31 @@ fastify.get('/api/insights/:userId', async (request, reply) => {
 });
 
 fastify.post('/api/insights/generate', async (request, reply) => {
-  const body = request.body;
+  const { userId, insightType, context } = request.body as any;
 
   try {
-    const insight = await generateMegaLLMInsight(body.insightType, body.context);
+    const uid = getOrCreateUser(db, userId);
+    let finalContext = context || {};
 
-    saveInsight(db, body.userId, {
-      insightType: body.insightType,
+    // Automatically gather real context if missing
+    if (insightType === 'weekly') {
+      const aggregates = getHourlyAggregates(db, uid, 7);
+      if (aggregates && aggregates.length > 0) {
+        finalContext = { dailyData: aggregates };
+      }
+    } else if (insightType === 'session') {
+      const stats = getUserStats(db, uid);
+      finalContext = {
+        avg_stability: stats.avgStability || 70,
+        error_rate: stats.avgErrorRate || 0.05,
+        session_duration: stats.totalMinutes || 0
+      };
+    }
+
+    const insight = await generateMegaLLMInsight(insightType, finalContext);
+
+    saveInsight(db, uid, {
+      insightType: insightType,
       content: insight.message,
       dataPayload: insight.data
     });
