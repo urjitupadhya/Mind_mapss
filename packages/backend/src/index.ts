@@ -280,7 +280,8 @@ fastify.get('/api/gamification/:userId', async (request, reply) => {
   }
 });
 
-fastify.get('/ws/:userId', { websocket: true }, (socket, request) => {
+fastify.get('/ws/:userId', { websocket: true }, (connection, request) => {
+  const { socket } = connection;
   const { userId } = request.params;
 
   wsClients.set(userId, socket);
